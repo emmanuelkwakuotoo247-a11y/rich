@@ -1127,3 +1127,66 @@ def test_soft_wrap_styled() -> None:
     # Background is reset before \n
     expected = "\x1b[34;47msoft wrap is on\x1b[0m\nNext line\n"
     assert output == expected
+
+def test_highlight_words_empty_iterable():
+    """An empty word iterable should be a no-op (issue #4229)."""
+    text = Text("abc")
+
+    count = text.highlight_words([], "red")
+
+    assert count == 0
+    assert len(text._spans) == 0
+
+
+def test_highlight_words_empty_iterable_empty_text():
+    """An empty word iterable on empty text should be a no-op (issue #4229)."""
+    text = Text("")
+
+    count = text.highlight_words([], "red")
+
+    assert count == 0
+    assert len(text._spans) == 0
+
+
+def test_highlight_words_empty_iterable_case_insensitive():
+    """An empty word iterable should be a no-op regardless of case sensitivity."""
+    text = Text("Hello World")
+
+    count = text.highlight_words([], "bold", case_sensitive=False)
+
+    assert count == 0
+    assert len(text._spans) == 0
+
+
+def test_highlight_words_empty_string_in_iterable():
+    """An empty string in the iterable should not create zero-length spans."""
+    text = Text("abc")
+
+    count = text.highlight_words([""], "red")
+
+    assert count == 0
+    assert len(text._spans) == 0
+
+
+def test_highlight_words_repeated_empty_iterable_does_not_accumulate_spans():
+    """Repeated no-op calls should not grow the span list."""
+    text = Text("hello world")
+
+    for _ in range(3):
+        assert text.highlight_words([], "red") == 0
+
+    assert len(text._spans) == 0
+
+
+def test_highlight_words_after_empty_iterable_still_highlights():
+    """A real highlight after an empty one should behave as if it were alone."""
+    text = Text("hello world")
+
+    text.highlight_words([], "red")
+    count = text.highlight_words(["world"], "bold")
+
+    assert count == 1
+    assert len(text._spans) == 1
+    span = text._spans[0]
+    assert (span.start, span.end) == (6, 11)
+    assert span.style == "bold"
